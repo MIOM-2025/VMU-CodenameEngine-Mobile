@@ -349,9 +349,9 @@ class MusicBeatState extends FlxState implements IBeatCancellableReceiver
 
 	public function addBackButton():funkin.mobile.MobileButton
 	{
-		if (mobileBackButton == null)
-			add(mobileBackButton = funkin.mobile.MobileButton.createBack(createMobileCamera()));
-		return mobileBackButton;
+		// Back buttons are disabled everywhere except the options menu.
+		// (The options menu draws its own back button inside TreeMenu.)
+		return null;
 	}
 
 	public function addPauseButton():funkin.mobile.MobileButton

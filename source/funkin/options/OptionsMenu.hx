@@ -15,6 +15,8 @@ typedef OptionCategory = {
 }
 
 class OptionsMenu extends TreeMenu {
+	override function shouldShowBackButton():Bool return true;
+
 	public static var mainOptions:Array<OptionCategory> = [
 		#if !mobile
 		{  // name and desc are actually the translations ids!  - Nex

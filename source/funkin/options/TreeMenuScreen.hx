@@ -1,10 +1,11 @@
 package funkin.options;
 
 import flixel.group.FlxSpriteGroup;
+import flixel.util.FlxTimer;
 import flixel.util.FlxSignal;
 import funkin.backend.system.Controls;
 import funkin.backend.TurboControls;
-import funkin.mobile.TouchUtil;
+import mobile.funkin.backend.utils.OptionTouch;
 import funkin.options.TreeMenu.ITreeOption;
 import funkin.options.TreeMenu.ITreeFloatOption;
 import funkin.options.type.OptionType;
@@ -61,6 +62,15 @@ class TreeMenuScreen extends FlxSpriteGroup {
 	var curFloatOption:ITreeFloatOption;
 	var __firstFrame:Bool = true;
 
+	public var dragging:Bool = false;
+	var dragStartY:Float = 0;
+	var dragStartX:Float = 0;
+	var dragStartSelected:Int = 0;
+	var dragLastY:Float = 0;
+	var dragMoved:Bool = false;
+	var dragVel:Array<Float> = [];
+	var listInertia:FlxTimer = null;
+
 	public function new(name:String, desc:String, prefix:String = "", ?objects:Array<FlxSprite>) {
 		super();
 		this.prefix = prefix;
@@ -68,6 +78,8 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		rawDesc = desc;
 
 		turboBasics = [leftTurboControl, rightTurboControl, upTurboControl, downTurboControl];
+
+		OptionTouch.init();
 
 		if (objects != null) for (object in objects) add(object);
 	}
@@ -95,47 +107,47 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		if (inputEnabled) {
 			for (basic in turboBasics) basic.update(elapsed);
 
-			var change = (upTurboControl.activated ? -1 : 0) + (downTurboControl.activated ? 1 : 0) - FlxG.mouse.wheel + TouchUtil.verticalScroll, mouseControl = false;
-			if (TouchUtil.tapped) {
-				for (i in CoolUtil.maxInt(curSelected - 3, 0)...CoolUtil.minInt(curSelected + 4, length))
-					if (i != curSelected && members[i] != null && mouseOverlaps(members[i])) {
-						change = i - curSelected;
-						mouseControl = true;
-						break;
-					}
-			}
-			changeSelection(change);
+			// 手指按住列表往上/下拖 = 列表跟着滚（带惯性）
+			updateListDrag(elapsed);
 
-			if (length > 0 && curOption != null) {
-				if (controls.ACCEPT || (!mouseControl && TouchUtil.tapped && mouseOverlaps(members[curSelected]))) curOption.select();
+			var change = (upTurboControl.activated ? -1 : 0) + (downTurboControl.activated ? 1 : 0) - FlxG.mouse.wheel;
+			if (!dragging) changeSelection(change);
+
+			if (length > 0 && curOption != null && !dragging) {
+				if (controls.ACCEPT) curOption.select();
+
+				var goLeft:Bool = controls.LEFT, goRight:Bool = controls.RIGHT;
+				// 左右滑 = 改值 / 切换（只影响设置界面）
+				goLeft = goLeft || OptionTouch.swipeLeft;
+				goRight = goRight || OptionTouch.swipeRight;
 				if (curFloatOption != null) {
-					if (controls.LEFT) curFloatOption.changeValue(-elapsed);
-					if (controls.RIGHT) curFloatOption.changeValue(elapsed);
+					if (goLeft) curFloatOption.changeValue(-(controls.LEFT ? elapsed : 1));
+					if (goRight) curFloatOption.changeValue(controls.RIGHT ? elapsed : 1);
 				}
 				else {
-					if (leftTurboControl.activated || TouchUtil.swipeLeft) curOption.changeSelection(-1);
-					if (rightTurboControl.activated || TouchUtil.swipeRight) curOption.changeSelection(1);
+					if (leftTurboControl.activated || goLeft) curOption.changeSelection(-1);
+					if (rightTurboControl.activated || goRight) curOption.changeSelection(1);
 				}
 			}
 
-			if (controls.BACK || (FlxG.mouse.justPressedRight && Main.timeSinceFocus > 0.3) || (parent != null && parent.mobileBackPressed)) close();
+			if (controls.BACK || (FlxG.mouse.justPressedRight && Main.timeSinceFocus > 0.3)) close();
 		}
 
 		updateItems();
-	}
-
-	dynamic function updateItem(object:FlxSprite, itemHeight:Float, centerY:Float, lerpRatio:Float) {
-		object.y = CoolUtil.fpsLerp(object.y, centerY - itemHeight * 0.5, lerpRatio);
-		object.x = x + 100 - Math.pow(Math.abs((object.y - (FlxG.height - itemHeight) * 0.5) / itemHeight / FlxG.height * FlxG.initialHeight), 1.6) * 15;
 	}
 
 	public function updateItems(force = false) {
 		var r = force ? 1 : 0.25, initY = FlxG.height * 0.5;
 		var i = curSelected, y = initY, object:FlxSprite = null, itemHeight:Float = 0;
 
+		inline function updateItem() {
+			object.y = CoolUtil.fpsLerp(object.y, y - itemHeight * 0.5, r);
+			object.x = x + 100 - Math.pow(Math.abs((object.y - (FlxG.height - itemHeight) * 0.5) / itemHeight / FlxG.height * FlxG.initialHeight), 1.6) * 15;
+		}
+
 		while (i < length) if ((object = members[i++]) != null) {
 			itemHeight = object.height;
-			updateItem(object, itemHeight, y, r);
+			updateItem();
 			y += itemHeight;
 		}
 
@@ -143,8 +155,129 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		i = curSelected;
 		while (i-- > 0) if ((object = members[i]) != null) {
 			y -= (itemHeight = object.height);
-			updateItem(object, itemHeight, y, r);
+			updateItem();
 		}
+	}
+
+	/**
+	 * 按住列表上下拖：列表跟着滚；松手带惯性；
+	 * 轻点某一项 = 直接跳到选中它；点当前项 = 确认/切换。
+	 * 在返回键上按下不会触发拖动。
+	 */
+	function updateListDrag(elapsed:Float):Void
+	{
+		if (length == 0) return;
+
+		var backHeld:Bool = parent != null && parent.backButton != null && parent.backButton.exists
+			&& OptionTouch.pressingOn(parent.backButton);
+
+		if (!dragging && OptionTouch.justPressedNow && !backHeld)
+		{
+			dragging = true;
+			dragMoved = false;
+			dragStartY = OptionTouch.pointerY;
+			dragStartX = OptionTouch.pointerX;
+			dragLastY = dragStartY;
+			dragStartSelected = curSelected;
+			dragVel = [];
+			if (listInertia != null)
+			{
+				listInertia.cancel();
+				listInertia = null;
+			}
+		}
+
+		if (!dragging) return;
+
+		if (OptionTouch.holding)
+		{
+			var dy:Float = OptionTouch.pointerY - dragStartY;
+			var dx:Float = OptionTouch.pointerX - dragStartX;
+			// 纵向位移要明显大于横向，才算“上下滚”，避免想左右滑时误触
+			if (Math.abs(dy) > 26 && Math.abs(dy) > Math.abs(dx) * 1.3) dragMoved = true;
+
+			if (dragMoved)
+			{
+				var itemH:Float = 64;
+				if (curSelected >= 0 && curSelected < length && members[curSelected] != null && members[curSelected].height > 8)
+					itemH = members[curSelected].height;
+
+				// 往上拖 = 列表往上滚 = 选中项往后走
+				// 灵敏度：默认 1 项 ≈ 0.55 个选项高度，滑起来更省力
+				var raw:Float = dragStartSelected - dy / (itemH * 0.55);
+				var target:Int = Std.int(FlxMath.bound(Math.round(raw), 0, length - 1));
+				if (target != curSelected) setSelected(target, true);
+			}
+
+			var v:Float = (OptionTouch.pointerY - dragLastY) / Math.max(elapsed, 0.001);
+			dragLastY = OptionTouch.pointerY;
+			dragVel.push(v);
+			if (dragVel.length > 8) dragVel.shift();
+		}
+
+		if (OptionTouch.releasedNow)
+		{
+			dragging = false;
+
+			if (!dragMoved)
+			{
+				var idx:Int = itemAtScreenY(OptionTouch.pointerY);
+				if (idx >= 0)
+				{
+					if (idx == curSelected)
+					{
+						if (curOption != null) curOption.select();
+					}
+					else setSelected(idx, true);
+				}
+			}
+			else
+			{
+				var avg:Float = 0;
+				for (v in dragVel) avg += v;
+				if (dragVel.length > 0) avg /= dragVel.length;
+
+				if (Math.abs(avg) > 70) startListInertia(avg < 0 ? 1 : -1, Math.abs(avg));
+			}
+
+			dragVel = [];
+		}
+	}
+
+	/** 松手后按速度再滚 1~2 格，到头就停（不循环） */
+	function startListInertia(dir:Int, speed:Float):Void
+	{
+		var steps:Int = Std.int(FlxMath.bound(Math.floor(speed / 420), 1, 2));
+		if (listInertia != null) listInertia.cancel();
+		listInertia = new FlxTimer().start(0.06, function(t:FlxTimer) {
+			var next:Int = curSelected + dir;
+			if (next < 0 || next >= length)
+			{
+				t.cancel();
+				listInertia = null;
+				return;
+			}
+			setSelected(next, true);
+			if (--steps <= 0)
+			{
+				t.cancel();
+				listInertia = null;
+			}
+		}, 0);
+	}
+
+	function itemAtScreenY(y:Float):Int
+	{
+		for (i in 0...length)
+		{
+			var m:FlxSprite = members[i];
+			if (m == null || !m.exists) continue;
+			var pos = m.getScreenPosition(null, FlxG.camera);
+			var hit:Bool = y >= pos.y && y <= pos.y + m.height;
+			pos.put();
+			if (hit) return i;
+		}
+		return -1;
 	}
 
 	public function close() {
@@ -156,6 +289,44 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		else parent.removeMenu(this);
 
 		CoolUtil.playMenuSFX(CANCEL).persist = true;
+	}
+
+	/**
+	 * 直接选中某一项（拖动/点击用）。到边界就停，不循环；
+	 * 选到分隔符会就近挪到旁边可选项。
+	 */
+	public function setSelected(index:Int, playSFX:Bool = true):Void {
+		if (length == 0) return;
+
+		index = Std.int(FlxMath.bound(index, 0, length - 1));
+
+		if (members[index] is Separator) {
+			var found:Int = -1;
+			for (d in 1...length) {
+				var a:Int = index - d, b:Int = index + d;
+				if (a >= 0 && !(members[a] is Separator)) { found = a; break; }
+				if (b < length && !(members[b] is Separator)) { found = b; break; }
+			}
+			if (found < 0) return;
+			index = found;
+		}
+
+		if (index == curSelected) return;
+		curSelected = index;
+
+		if (curOption != null) curOption.selected = false;
+		if (members[curSelected] is ITreeOption) {
+			(curOption = cast members[curSelected]).selected = true;
+			if (curOption is ITreeFloatOption) curFloatOption = cast curOption;
+			else curFloatOption = null;
+		}
+		else {
+			curOption = null;
+			curFloatOption = null;
+		}
+		updateMenuDesc();
+
+		if (playSFX) CoolUtil.playMenuSFX(SCROLL);
 	}
 
 	public function changeSelection(change:Int, force:Bool = false) {

@@ -173,6 +173,11 @@ class Main extends Sprite
 		if (FileSystem.exists("mods/autoload.txt"))
 			modToLoad = File.getContent("mods/autoload.txt").trim();
 
+		// VMU is bundled with the app and installed automatically on first launch.
+		// If the autoload file is missing for any reason, still select it by default.
+		if (modToLoad == null && FileSystem.exists("mods/VMU/data/config/modpack.ini"))
+			modToLoad = "VMU";
+
 		ModsFolder.switchMod(modToLoad.getDefault(Options.lastLoadedMod));
 		#end
 

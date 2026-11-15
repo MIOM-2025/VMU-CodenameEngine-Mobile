@@ -1,12 +1,14 @@
 package funkin.options;
 
 import flixel.tweens.FlxTween;
+import funkin.backend.assets.Paths;
 import flixel.util.FlxArrayUtil;
 import flixel.util.FlxColor;
 import flixel.util.FlxSignal;
 import funkin.backend.FunkinText;
 import funkin.backend.system.framerate.Framerate;
 import funkin.editors.ui.UIState;
+import mobile.funkin.backend.utils.OptionTouch;
 
 interface ITreeOption {
 	var desc:String;
@@ -76,7 +78,7 @@ class TreeMenu extends UIState {
 		add(titleLabel);
 		add(descLabel);
 
-		addBackButton();
+		if (shouldShowBackButton()) createBackButton();
 
 		FlxG.camera.scroll.x = -FlxG.width;
 		menuChanged();
@@ -236,6 +238,58 @@ class TreeMenu extends UIState {
 
 		// in case path gets so long it goes offscreen, ALTHOUGH this nevers happens anyway since we have set a expected width to the label.
 		//titleLabel.x = lerp(titleLabel.x, Math.max(0, FlxG.width - 4 - titleLabel.width), 0.125);
+
+		updateBackButton();
+	}
+
+	public var backButton:FlxSprite;
+	var backHeld:Bool = false;
+
+	/**
+	 * Only the options menu shows a back button; every other screen has none.
+	 */
+	public dynamic function shouldShowBackButton():Bool return false;
+
+	function createBackButton():Void
+	{
+		if (backButton != null) return;
+
+		backButton = new FlxSprite(0, 0);
+		backButton.frames = Paths.getFrames('mobile/backButton');
+		backButton.animation.addByIndices('idle', 'back', [0], "", 24, false);
+		backButton.animation.addByPrefix('press', 'back', 24, false);
+		backButton.animation.play('idle');
+		backButton.scale.set(0.45, 0.45);
+		backButton.updateHitbox();
+		backButton.scrollFactor.set(0, 0);
+		backButton.antialiasing = true;
+		// 放右上角，避开底部 TouchPad 的 A/B/C，不会误触
+		backButton.x = FlxG.width - backButton.width - 8;
+		backButton.y = 6;
+		add(backButton);
+	}
+
+	function updateBackButton():Void
+	{
+		if (backButton == null || !backButton.exists) return;
+
+		// 不做帧动画，只用第一帧（idle），按下去缩放反馈
+		if (!backHeld && OptionTouch.pressingOn(backButton))
+		{
+			backHeld = true;
+			FlxTween.cancelTweensOf(backButton.scale);
+			FlxTween.tween(backButton.scale, {x: 0.36, y: 0.36}, 0.08, {ease: FlxEase.quadOut});
+		}
+
+		var fire:Bool = OptionTouch.releasedOn(backButton);
+		if (backHeld && (fire || !OptionTouch.anyPressed))
+		{
+			backHeld = false;
+			FlxTween.cancelTweensOf(backButton.scale);
+			FlxTween.tween(backButton.scale, {x: 0.45, y: 0.45}, 0.12, {ease: FlxEase.quadOut});
+
+			if (fire && treeLength > 0) tree.last().close();
+		}
 	}
 
 	override function destroy() {
