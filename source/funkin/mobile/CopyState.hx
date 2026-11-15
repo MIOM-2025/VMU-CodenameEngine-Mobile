@@ -167,6 +167,12 @@ class CopyState extends FlxState
 				return true;
 			i += step;
 		}
+		// Bundled mods (e.g. VMU) must also be installed when upgrading an
+		// existing install that already has all the base assets.
+		for (id in getBundledFiles())
+			if (missing(id))
+				return true;
+
 		if (outdated)
 			writeVersion();
 		Logs.trace('[CopyState] Assets already present in ${StorageUtil.storageDirectory}, skipping extraction', INFO);
