@@ -80,6 +80,30 @@ jobs:
           haxe -cp commandline -D analyzer-optimize --run Main setup -si
           bash building/patch-lime-mobile.sh
 
+      - name: Configuring Lime for Android
+        run: |
+          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
+          echo "ANDROID_NDK_ROOT=$NDK" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$NDK" >> $GITHUB_ENV
+          echo "ANDROID_HOST=linux-x86_64" >> $GITHUB_ENV
+          echo "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+          ls $NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME -nocffi
+          haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }} -nocffi
+          haxelib run lime config JAVA_HOME $JAVA_HOME -nocffi
+          haxelib run lime config ANDROID_SETUP true -nocffi
+
+      - name: Installing packages for building Lime
+        if: steps.libs-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qq \
+          libegl1-mesa-dev libgl1-mesa-dev libibus-1.0-dev libdbus-1-dev libdecor-0-dev libudev-dev libgbm-dev libdrm-dev \
+          libpng-dev libturbojpeg-dev libvorbis-dev libopenal-dev libsdl2-dev libglu1-mesa-dev libmbedtls-dev libuv1-dev libsqlite3-dev \
+          libx11-dev libxext-dev libxfixes-dev libxi-dev libxinerama-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxss-dev libxt-dev libxtst-dev libxv-dev libxxf86vm-dev \
+          libwayland-dev wayland-protocols libwayland-bin \
+          libpulse-dev libasound2-dev libpipewire-0.3-dev
+
       - name: Pre-generate Wayland protocols
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
@@ -108,30 +132,6 @@ jobs:
             done
             echo "$LIME_PATH: generated $(ls "$OUT" | wc -l) files"
           done
-
-      - name: Configuring Lime for Android
-        run: |
-          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
-          echo "ANDROID_NDK_ROOT=$NDK" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$NDK" >> $GITHUB_ENV
-          echo "ANDROID_HOST=linux-x86_64" >> $GITHUB_ENV
-          echo "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
-          ls $NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++
-          haxelib run lime config ANDROID_SDK $ANDROID_HOME -nocffi
-          haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }} -nocffi
-          haxelib run lime config JAVA_HOME $JAVA_HOME -nocffi
-          haxelib run lime config ANDROID_SETUP true -nocffi
-
-      - name: Installing packages for building Lime
-        if: steps.libs-cache.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -qq \
-          libegl1-mesa-dev libgl1-mesa-dev libibus-1.0-dev libdbus-1-dev libdecor-0-dev libudev-dev libgbm-dev libdrm-dev \
-          libpng-dev libturbojpeg-dev libvorbis-dev libopenal-dev libsdl2-dev libglu1-mesa-dev libmbedtls-dev libuv1-dev libsqlite3-dev \
-          libx11-dev libxext-dev libxfixes-dev libxi-dev libxinerama-dev libxkbcommon-dev libxcursor-dev libxrandr-dev libxss-dev libxt-dev libxtst-dev libxv-dev libxxf86vm-dev \
-          libwayland-dev wayland-protocols libwayland-bin \
-          libpulse-dev libasound2-dev libpipewire-0.3-dev
 
       - name: Rebuilding Lime and Hxcpp
         if: steps.libs-cache.outputs.cache-hit != 'true'
