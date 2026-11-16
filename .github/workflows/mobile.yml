@@ -83,7 +83,7 @@ jobs:
       - name: Pre-generate Wayland protocols
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
-          LIME_PATH=$(haxelib path lime | head -n 1)
+          LIME_PATH=$(haxelib path lime | sed -n 's/^-cp //p' | head -n 1)
           echo "lime path: $LIME_PATH"
           OUT="$LIME_PATH/project/lib/sdl/wayland-generated-protocols"
           SRC="$LIME_PATH/project/lib/sdl/wayland-protocols"
