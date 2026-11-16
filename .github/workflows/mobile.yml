@@ -105,6 +105,15 @@ jobs:
           libwayland-dev wayland-protocols libwayland-bin \
           libpulse-dev libasound2-dev libpipewire-0.3-dev
 
+      - name: Patch lime JNI duplicate symbol
+        if: steps.libs-cache.outputs.cache-hit != 'true'
+        run: |
+          for LIME_PATH in "$PWD"/.haxelib/lime/*/; do
+            FILE="$LIME_PATH/project/src/backend/sdl/SDLSystem.cpp"
+            [ -f "$FILE" ] || continue
+            python3 .github/scripts/patch_lime_jni.py "$FILE"
+          done
+
       - name: Pre-generate Wayland protocols
         if: steps.libs-cache.outputs.cache-hit != 'true'
         run: |
