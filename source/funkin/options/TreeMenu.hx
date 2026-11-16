@@ -248,7 +248,7 @@ class TreeMenu extends UIState {
 	/**
 	 * Only the options menu shows a back button; every other screen has none.
 	 */
-	public dynamic function shouldShowBackButton():Bool return false;
+	public function shouldShowBackButton():Bool return false;
 
 	function createBackButton():Void
 	{

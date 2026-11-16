@@ -601,7 +601,13 @@ class GLSLSourceAssembler
 		}
 		#end
 
-		if (!OpenGLRenderer.__separateShadersSupported)
+		#if mobile
+		var separateShadersUnsupported:Bool = true;
+		#else
+		var separateShadersUnsupported:Bool = !OpenGLRenderer.__separateShadersSupported;
+		#end
+
+		if (separateShadersUnsupported)
 		{
 			if (isES ? (dataVersion.versionNumber == 300 && contextVersion.versionNumber >= 310)
 					: (dataVersion.versionNumber >= 330 && dataVersion.versionNumber < 410 && contextVersion.versionNumber >= 410))
