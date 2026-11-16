@@ -219,7 +219,8 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		{
 			dragging = false;
 
-			if (!dragMoved)
+			// A horizontal swipe means "change this value", never "press it".
+			if (!dragMoved && !OptionTouch.swipeLeft && !OptionTouch.swipeRight)
 			{
 				var idx:Int = itemAtScreenY(OptionTouch.pointerY);
 				if (idx >= 0)
