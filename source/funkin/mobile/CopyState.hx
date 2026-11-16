@@ -315,6 +315,25 @@ class CopyState extends FlxState
 		}
 
 		StorageUtil.saveCurrentDirectory();
+
+		#if MOD_SUPPORT
+		// On a first install CopyState runs before the bundled autoload file
+		// exists on disk, so Main.init() had nothing to read. Apply it now,
+		// right before MainState loads the mod libraries.
+		try
+		{
+			if (FileSystem.exists("mods/autoload.txt"))
+			{
+				var autoMod = File.getContent("mods/autoload.txt").trim();
+				if (autoMod.length > 0 && FileSystem.exists("mods/" + autoMod))
+				{
+					funkin.backend.assets.ModsFolder.currentModFolder = autoMod;
+					funkin.options.Options.lastLoadedMod = autoMod;
+				}
+			}
+		}
+		catch (e:Dynamic) {}
+		#end
 		#end
 
 		_assetFiles = null;
