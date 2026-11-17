@@ -204,9 +204,10 @@ class StorageUtil
 			return true;
 		}
 
-		if (hasStoragePermission())
-			return applyDetectedType(STORAGE_EXTERNAL);
-
+		// Always default to the app-specific external files directory
+		// (/sdcard/Android/data/<package>/files). The old build preferred
+		// STORAGE_EXTERNAL whenever "All files access" was granted, which put
+		// game data in /sdcard/.CodenameEngine instead.
 		if (!externalFolderExists())
 		{
 			for (type in [STORAGE_DATA, STORAGE_MEDIA, STORAGE_OBB])
@@ -217,7 +218,7 @@ class StorageUtil
 			}
 		}
 
-		return false;
+		return applyDetectedType(STORAGE_DATA);
 		#else
 		return true;
 		#end
@@ -621,8 +622,9 @@ class StorageUtil
 		#if android
 		try
 		{
-			var path = lime.utils.Assets.getPath(id);
-			if (path != null && AndroidStorage.copyAsset(path, target))
+			// Assets.getPath() is a tools-only API and returns null on Android.
+			// The asset id is already the path relative to the APK assets folder.
+			if (AndroidStorage.copyAsset(id, target))
 				return true;
 		}
 		catch (e:Dynamic) {}
@@ -635,13 +637,15 @@ class StorageUtil
 		}
 		try
 		{
-			return saveBytes(target, lime.utils.Assets.getBytes(id));
+			var bytes = lime.utils.Assets.getBytes(id);
+			if (bytes != null && bytes.length > 0)
+				return saveBytes(target, bytes);
 		}
 		catch (e:Dynamic)
 		{
 			lastError = Std.string(e);
 		}
-		return isFontAsset(id);
+		return false;
 	}
 
 	public static function isFontAsset(id:String):Bool
