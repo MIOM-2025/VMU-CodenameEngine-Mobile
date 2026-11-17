@@ -290,6 +290,11 @@ class Options
 	}
 
 	public static function applySettings() {
+		// These two are deliberately not exposed in the menu anymore:
+		// AntiCrash stays on, and the engine's own Middlescroll is replaced by VMU's.
+		antiCrash = true;
+		centeredFields = false;
+
 		applyKeybinds();
 		applyQuality();
 

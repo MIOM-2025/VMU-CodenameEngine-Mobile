@@ -722,7 +722,9 @@ class PlayState extends MusicBeatState
 		FlxG.cameras.add(camHUD = new HudCamera(), false);
 		camHUD.bgColor.alpha = 0;
 
-		downscroll = Options.downscroll #if mobile || funkin.mobile.Hitbox.isArrowsMode() #end;
+		// Arrows mode must follow the player's Downscroll choice instead of forcing
+		// it on; forcing it made the touch arrows collide with the bottom HUD.
+		downscroll = Options.downscroll;
 
 		persistentUpdate = true;
 		persistentDraw = true;

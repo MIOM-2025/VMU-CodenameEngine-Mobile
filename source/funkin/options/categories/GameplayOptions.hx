@@ -11,6 +11,13 @@ class GameplayOptions extends TreeMenuScreen {
 		super('optionsTree.gameplay-name', 'optionsTree.gameplay-desc', 'GameplayOptions.');
 
 		add(new Checkbox(getNameID('downscroll'), getDescID('downscroll'), 'downscroll'));
+
+		// VMU 自己的居中滚动：保存到 FlxG.save.data，和模组脚本共用同一个开关。
+		// 引擎原来的 Centered Strumlines 由 Flags.ALLOW_CENTERED_FIELDS 关闭，避免两套布局打架。
+		if (FlxG.save.data.middleScroll == null)
+			FlxG.save.data.middleScroll = false;
+		add(new Checkbox(getNameID('middleScroll'), getDescID('middleScroll'), 'middleScroll', null, FlxG.save.data));
+
 		add(new Checkbox(getNameID('ghostTapping'), getDescID('ghostTapping'), 'ghostTapping'));
 		if (Flags.ALLOW_CENTERED_FIELDS)
 			add(new Checkbox(getNameID('centeredFields'), getDescID('centeredFields'), 'centeredFields'));

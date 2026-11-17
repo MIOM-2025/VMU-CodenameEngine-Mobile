@@ -51,7 +51,9 @@ class StorageUtil
 	{
 		#if android
 		activeStorageType = STORAGE_DATA;
-		var type = getStorageType();
+		// VMU port: always use Android/data. The other storage types are kept
+		// in the API for compatibility, but are no longer selectable in-game.
+		var type = STORAGE_DATA;
 		var path = getDirectoryForType(type);
 		if (path != null && isWritable(path))
 		{
@@ -197,27 +199,9 @@ class StorageUtil
 	public static function autoDetectStorageType():Bool
 	{
 		#if android
-		if (hasStorageTypeSetting())
-		{
-			if (getStorageType() == STORAGE_EXTERNAL && !hasStoragePermission())
-				return false;
-			return true;
-		}
-
-		// Always default to the app-specific external files directory
-		// (/sdcard/Android/data/<package>/files). The old build preferred
-		// STORAGE_EXTERNAL whenever "All files access" was granted, which put
-		// game data in /sdcard/.CodenameEngine instead.
-		if (!externalFolderExists())
-		{
-			for (type in [STORAGE_DATA, STORAGE_MEDIA, STORAGE_OBB])
-			{
-				var path = getDirectoryForType(type);
-				if (path != null && hasExtractedAssets(path))
-					return applyDetectedType(type);
-			}
-		}
-
+		// This port only supports Android/data. Ignore any old storage_type.txt
+		// (including External) so the game never asks for All-files access or
+		// silently moves its data somewhere else.
 		return applyDetectedType(STORAGE_DATA);
 		#else
 		return true;
