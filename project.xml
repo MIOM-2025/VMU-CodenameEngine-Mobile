@@ -98,8 +98,8 @@
 	<!-- _________________________ Application Settings _________________________ -->
 	<app
 		title="Friday Night Funkin' - Codename Engine"
-		file="CodenameEngine" packageName="com.yoshman29.codenameengine"
-		package="com.yoshman29.codenameengine"
+		file="CodenameEngine" packageName="com.miom2025.vmuengine"
+		package="com.miom2025.vmuengine"
 		version="1.1.0" company="Yoshman29"/>
 
 	<app title="FNF: Codename Engine" if="mobile"/>
@@ -123,7 +123,7 @@
 	<icon path="assets/images/icon.png" size='512' unless="mobile"/>
 	<icon path="assets/images/icon.png" size='768' unless="mobile"/>
 	<icon path="assets/images/icon.png" size='1024' unless="mobile"/>
-	<icon path="assets/images/icon64.png" if="mobile"/>
+	<icon path="assets/images/icon-mobile.png" if="mobile"/>
 
 	<!-- ____________________________ Window Settings ___________________________ -->
 
