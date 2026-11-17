@@ -169,18 +169,59 @@ class Hitbox extends FlxTypedSpriteGroup<FlxSprite>
 
 		var camera = getArrowCamera();
 		var point = FlxPoint.get();
-		var best = -1;
-		var bestDistance = Math.POSITIVE_INFINITY;
-		for (i => target in targets)
+		var centers:Array<Float> = [];
+		for (i in 0...targets.length)
 		{
+			var target = targets[i];
 			if (target == null || !target.exists || i >= keyCount)
-				continue;
-			target.getScreenPosition(point, camera);
-			var padX = target.width * 0.35;
-			var padY = target.height * 0.6;
-			if (worldX >= point.x - padX && worldX <= point.x + target.width + padX && worldY >= point.y - padY && worldY <= point.y + target.height + padY)
 			{
-				var distance = Math.abs(worldX - (point.x + target.width / 2)) + Math.abs(worldY - (point.y + target.height / 2));
+				centers.push(Math.NaN);
+				continue;
+			}
+			target.getScreenPosition(point, camera);
+			centers.push(point.x + target.width / 2);
+		}
+		point.put();
+
+		// In Arrows mode each arrow's whole vertical column is tappable.
+		// Column edges are the midpoints between neighboring arrows (screen
+		// edges for the outermost ones), and the column spans the full screen
+		// height. This only changes the touch-to-lane mapping; note and
+		// receptor hitboxes are left untouched.
+		var best:Int = -1;
+		var bestDistance:Float = Math.POSITIVE_INFINITY;
+		for (i in 0...centers.length)
+		{
+			if (Math.isNaN(centers[i]))
+				continue;
+
+			var left:Float = 0;
+			var j:Int = i - 1;
+			while (j >= 0)
+			{
+				if (!Math.isNaN(centers[j]))
+				{
+					left = (centers[j] + centers[i]) / 2;
+					break;
+				}
+				j--;
+			}
+
+			var right:Float = FlxG.width;
+			j = i + 1;
+			while (j < centers.length)
+			{
+				if (!Math.isNaN(centers[j]))
+				{
+					right = (centers[i] + centers[j]) / 2;
+					break;
+				}
+				j++;
+			}
+
+			if (worldX >= left && worldX <= right)
+			{
+				var distance:Float = Math.abs(worldX - centers[i]);
 				if (distance < bestDistance)
 				{
 					bestDistance = distance;
@@ -188,7 +229,6 @@ class Hitbox extends FlxTypedSpriteGroup<FlxSprite>
 				}
 			}
 		}
-		point.put();
 		return best;
 	}
 
