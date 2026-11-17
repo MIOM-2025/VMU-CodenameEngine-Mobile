@@ -100,7 +100,7 @@
 		title="VS. Mouse ULTIMATE (Cancelled Build) Port"
 		file="CodenameEngine" packageName="com.vmu.vsmouseultimate"
 		package="com.vmu.vsmouseultimate"
-		version="1.1.0" company="Yoshman29"/>
+		version="1.1.1" company="Yoshman29"/>
 
 	<app title="VS. Mouse ULTIMATE (Cancelled Build) Port" if="mobile"/>
 

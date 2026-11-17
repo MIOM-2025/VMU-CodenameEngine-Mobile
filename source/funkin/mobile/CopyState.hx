@@ -143,6 +143,12 @@ class CopyState extends FlxState
 		#end
 	}
 
+	static function shouldRefreshBundled(id:String):Bool
+	{
+		var ext = haxe.io.Path.extension(id).toLowerCase();
+		return ext == "hx" || ext == "xml" || ext == "json" || ext == "txt" || ext == "ini" || ext == "ttf" || ext == "otf";
+	}
+
 	public static function needsCopy():Bool
 	{
 		#if (sys && mobile)
@@ -156,9 +162,17 @@ class CopyState extends FlxState
 		if (StorageUtil.getPreviousDirectory() != null)
 			return true;
 
+		// A new APK version means the bundled VMU scripts/fonts changed too.
+		// Run CopyState and overwrite the bundled copies, otherwise an update
+		// would keep using the old mod scripts from the previous install.
+		if (isVersionOutdated())
+		{
+			Logs.trace('[CopyState] New app version, refreshing bundled assets', INFO);
+			return true;
+		}
+
 		var files = getFilesToCopy();
-		var outdated = isVersionOutdated();
-		var step = outdated ? 1 : Std.int(Math.max(1, files.length / 40));
+		var step = Std.int(Math.max(1, files.length / 40));
 		var i = 0;
 		while (i < files.length)
 		{
@@ -173,8 +187,6 @@ class CopyState extends FlxState
 			if (missing(id))
 				return true;
 
-		if (outdated)
-			writeVersion();
 		Logs.trace('[CopyState] Assets already present in ${StorageUtil.storageDirectory}, skipping extraction', INFO);
 		StorageUtil.saveCurrentDirectory();
 		#end
@@ -187,14 +199,19 @@ class CopyState extends FlxState
 
 		#if (sys && mobile)
 		var root = StorageUtil.storageDirectory;
-		overwrite = StorageUtil.isReextractRequested();
+		// Re-extracting or installing a new APK must refresh both assets and
+		// bundled mods (scripts, fonts, options.xml), not just missing files.
+		// On a version bump only overwrite the small text/font files in mods/,
+		// so we don't recopy ~279 MB of songs and videos every update.
+		var fullRefresh = StorageUtil.isReextractRequested();
+		overwrite = fullRefresh || isVersionOutdated();
 
 		for (id in getFilesToCopy())
 			if (overwrite || missing(id))
 				jobs.push({kind: ASSET, source: id, target: root + id});
 
 		for (id in getBundledFiles())
-			if (missing(id))
+			if (missing(id) || (overwrite && (fullRefresh || shouldRefreshBundled(id))))
 				jobs.push({kind: BUNDLED, source: id, target: root + id});
 
 		migrationSource = StorageUtil.getPreviousDirectory();
