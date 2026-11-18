@@ -294,6 +294,8 @@ class Options
 		// AntiCrash stays on, and the engine's own Middlescroll is replaced by VMU's.
 		antiCrash = true;
 		centeredFields = false;
+		// Arrow mode was removed; keep old saves from getting stuck in it.
+		if (hitboxMode != "Four Lanes") hitboxMode = "Four Lanes";
 
 		applyKeybinds();
 		applyQuality();

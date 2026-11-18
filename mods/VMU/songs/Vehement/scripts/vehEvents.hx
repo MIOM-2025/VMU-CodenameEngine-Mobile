@@ -86,6 +86,9 @@ function postCreate() {
 }
 
 function setUpChars(){
+    if (goofyChar == null || goofyChar.length < 3) return;
+    if (donaldChar == null || donaldChar.length < 2) return;
+    if (mickeyChar == null || mickeyChar.length < 3) return;
     goofyChar[0].scale.set(0.8, 0.8);
     goofyChar[1].scale.set(0.75, 0.75);
     goofyChar[2].scale.set(0.75, 0.75);
@@ -133,6 +136,7 @@ function update(elapsed:Float) {
 }
 
 function postUpdate(elapsed:Float) {
+    if (donaldChar == null || donaldChar[0] == null || donaldChar[0].animation.curAnim == null) return;
     if (allowDonaldTween && donaldChar[0].animation.curAnim.name == "idle-alt") {
         if (donaldTween == null) donaldTween = FlxTween.tween(donaldChar[0], {x: minX}, 4, {type: FlxTween.PINGPONG, ease: FlxEase.sineInOut});
         else donaldTween.active = true;
@@ -161,9 +165,9 @@ function stepHit() {
     switch (curStep) {
         case 798:
             swapChars(0, 2); 
-            mickeyChar[2].playAnim("nerves", true, "LOCK");
-        case 1260, 1713: mickeyChar[3].playAnim("laugh", true, "LOCK");
-        case 1910: mickeyChar[3].playAnim("bois", true, "LOCK");
+            if (mickeyChar[2] != null) mickeyChar[2].playAnim("nerves", true, "LOCK");
+        case 1260, 1713: if (mickeyChar[3] != null) mickeyChar[3].playAnim("laugh", true, "LOCK");
+        case 1910: if (mickeyChar[3] != null) mickeyChar[3].playAnim("bois", true, "LOCK");
     }
 }
 
@@ -179,8 +183,8 @@ function beatHit(curBeat:Int) {
     }
 
     switch(curBeat) {
-        case 103: 
-            goofyChar[0].visible = true;
+        case 103:
+            if (goofyChar[0] != null) goofyChar[0].visible = true;
             stage.stageSprites['goofy'].visible = false;
         case 136:
             bgFade(true);
@@ -223,18 +227,18 @@ function beatHit(curBeat:Int) {
         case 240:
             allowDonaldTween = false;
             if (donaldTween != null) donaldTween.cancel(); 
-            donaldChar[0].setPosition(200, donaldChar[0].y - 100);
-            goofyChar[0].setPosition(1100, goofyChar[0].y - 150);
+            if (donaldChar[0] != null) donaldChar[0].setPosition(200, donaldChar[0].y - 100);
+            if (goofyChar[0] != null) goofyChar[0].setPosition(1100, goofyChar[0].y - 150);
 
             adjustColor.brightness = 0;
             adjustColor.hue = 0;
             adjustColor.contrast = 0;
 
             if(Options.gameplayShaders){
-                for (grp in [stage.stageSprites, [boyfriend, gf, mickeyChar, donaldChar, goofyChar]]) {
-                    for (a in grp) {
-                        a.shader = adjustColor;
-                    }
+                // Characters are FlxAnimate atlases; assigning a shader to them makes the
+                // animate filter baker crash on Android (NULL texture), so only tint the stage.
+                for (a in stage.stageSprites) {
+                    if (a != null) a.shader = adjustColor;
                 }
                 FlxTween.tween(adjustColor, {brightness: -30, hue: -15, contrast: 15}, 1, {ease: FlxEase.quadOut});
             }

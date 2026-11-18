@@ -8,7 +8,7 @@ class MobileOptions extends TreeMenuScreen {
 
 		add(new Checkbox(getNameID('invisibleHitbox'), getDescID('invisibleHitbox'), 'invisibleHitbox'));
 		add(new NumOption(getNameID('hitboxOpacity'), getDescID('hitboxOpacity'), 0, 100, 5, 'hitboxOpacity'));
-		add(new ArrayOption(getNameID('hitboxMode'), getDescID('hitboxMode'), funkin.mobile.Hitbox.MODES, funkin.mobile.Hitbox.MODES, 'hitboxMode'));
+		// Arrow mode was removed: the mobile hitbox is always the four-lane layout.
 		add(new Checkbox(getNameID('invisiblePauseButton'), getDescID('invisiblePauseButton'), 'invisiblePauseButton'));
 		add(new TextOption(getNameID('storageInfo'), getDescID('storageInfo'), () -> {
 			funkin.backend.system.modules.AntiCrash.showNotice('Storage', StorageUtil.getStorageInfo());

@@ -13,7 +13,8 @@ class Hitbox extends FlxTypedSpriteGroup<FlxSprite>
 
 	public static inline var MODE_LANES:String = "Four Lanes";
 	public static inline var MODE_ARROWS:String = "Arrows";
-	public static var MODES:Array<String> = [MODE_LANES, MODE_ARROWS];
+	// Arrow mode was removed on mobile; the hitbox always uses the four-lane layout.
+	public static var MODES:Array<String> = [MODE_LANES];
 
 	public static var ARROWS_SCALE:Float = 1.25;
 	public static var ARROWS_SPREAD:Float = 0.8;
