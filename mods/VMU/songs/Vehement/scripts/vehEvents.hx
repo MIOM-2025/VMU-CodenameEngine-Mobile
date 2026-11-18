@@ -1,6 +1,7 @@
 importScript("data/scripts/lyrics");
 
 import openfl.display.BlendMode;
+import openfl.filters.ShaderFilter;
 import flixel.effects.FlxFlicker;
 import flixel.util.FlxColor;
 
@@ -235,11 +236,10 @@ function beatHit(curBeat:Int) {
             adjustColor.contrast = 0;
 
             if(Options.gameplayShaders){
-                // Characters are FlxAnimate atlases; assigning a shader to them makes the
-                // animate filter baker crash on Android (NULL texture), so only tint the stage.
-                for (a in stage.stageSprites) {
-                    if (a != null) a.shader = adjustColor;
-                }
+                // Characters are FlxAnimate atlases; assigning a shader directly to them makes
+                // the animate filter baker crash on Android (NULL texture). Apply the same
+                // adjustColor through the game camera so characters get it too.
+                camGame.setFilters([new ShaderFilter(adjustColor)]);
                 FlxTween.tween(adjustColor, {brightness: -30, hue: -15, contrast: 15}, 1, {ease: FlxEase.quadOut});
             }
         case 305, 309: FlxTween.tween(dad, {alpha: 0.5}, 0.5);

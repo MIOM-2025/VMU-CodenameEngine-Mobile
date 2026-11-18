@@ -63,13 +63,12 @@ function create() {
     var vRes = {w:640, h:360};
 
     for (vid in [video, video3, video2]){
-        // vid.setGraphicSize(FlxG.width, FlxG.height);
-        // vid.scale.set(-vRes.w, -vRes.h);
-        vid.scale.set(2.09,2.09);
+        // Cover the whole screen: use the larger ratio so there is never a blank
+        // edge on any side, then center the (possibly cropped) video.
+        var s:Float = Math.max(FlxG.width / vRes.w, FlxG.height / vRes.h);
+        vid.scale.set(s, s);
         vid.updateHitbox();
         vid.screenCenter();
-        vid.x = vRes.w/2;
-        vid.y = vRes.h/2;
     }
 
 
@@ -105,10 +104,10 @@ function beatHit() {
 }
 
 function update() {
-	if (camVideos.alpha != 1) {
-		if(Options.gameplayShaders) video2.shader = null;
-	} else {
-		if(Options.gameplayShaders) video2.shader = linear;
+	if (!Options.gameplayShaders) return;
+	var on:Bool = camVideos.alpha == 1;
+	for (v in [video, video2, video3]) {
+		if (v != null) v.shader = on ? linear : null;
 	}
 }
 
