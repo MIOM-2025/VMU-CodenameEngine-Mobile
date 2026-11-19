@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
-"""Make flixel-animate's filter baking fail soft on Android.
-
-The Android/OpenGL render-to-texture path can leave Graphics.__bounds null
-(or return a null BitmapData) while baking a masked movieclip frame, which
-crashes the Animate filter baker with NULL_ACCESS and takes the state down.
-These patches keep the game alive: a frame that cannot be baked is simply
-drawn straight instead of aborting the whole PlayState.
-"""
+"""Make flixel-animate's filter baking fail soft on Android."""
 import glob
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 patched = 0
 
 
+def read(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def write(path, src):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(src)
+
+
 def patch(path, replacements):
     global patched
-    with open(path, "r", encoding="utf-8") as f:
-        src = f.read()
+    src = read(path)
     original = src
     for old, new in replacements:
         if new in src:
@@ -28,8 +31,7 @@ def patch(path, replacements):
             continue
         src = src.replace(old, new, 1)
     if src != original:
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(src)
+        write(path, src)
         patched += 1
         print("[patch_animate] patched %s" % path)
 
@@ -67,27 +69,42 @@ for path in FR:
         ),
     ])
 
+FRAME_PATTERN = re.compile(
+    r"(?P<indent>[ \t]*)var bakedFrame:Null<AtlasInstance> = FilterRenderer\.bakeFrame\(this, frameIndex \+ this\.index, layer\);\s*\n"
+    r"\s*if \(bakedFrame == null\)\s*\n"
+    r"\s*return;"
+)
+
+
+def frame_replace(m):
+    ind = m.group("indent")
+    return (
+        ind + "var bakedFrame:Null<AtlasInstance> = null;\n"
+        + ind + "try {\n"
+        + ind + "\tbakedFrame = FilterRenderer.bakeFrame(this, frameIndex + this.index, layer);\n"
+        + ind + "} catch (e:Dynamic) {\n"
+        + ind + "\t_dirty = false;\n"
+        + ind + "\treturn;\n"
+        + ind + "}\n"
+        + ind + "if (bakedFrame == null) {\n"
+        + ind + "\t_dirty = false;\n"
+        + ind + "\treturn;\n"
+        + ind + "}"
+    )
+
+
 for path in FM:
-    patch(path, [
-        (
-            "\t\tvar bakedFrame:Null<AtlasInstance> = FilterRenderer.bakeFrame(this, frameIndex + this.index, layer);\n"
-            "\t\tif (bakedFrame == null) {\n"
-            "\t\t\t_dirty = false;\n"
-            "\t\t\treturn;\n"
-            "\t\t}\n",
-            "\t\tvar bakedFrame:Null<AtlasInstance> = null;\n"
-            "\t\ttry {\n"
-            "\t\t\tbakedFrame = FilterRenderer.bakeFrame(this, frameIndex + this.index, layer);\n"
-            "\t\t} catch (e:Dynamic) {\n"
-            "\t\t\t_dirty = false;\n"
-            "\t\t\treturn;\n"
-            "\t\t}\n"
-            "\t\tif (bakedFrame == null) {\n"
-            "\t\t\t_dirty = false;\n"
-            "\t\t\treturn;\n"
-            "\t\t}\n",
-        ),
-    ])
+    src = read(path)
+    if "catch (e:Dynamic)" in src and "bakedFrame = FilterRenderer.bakeFrame" in src:
+        print("[patch_animate] already patched %s" % path)
+        continue
+    src2, n = FRAME_PATTERN.subn(frame_replace, src, count=1)
+    if n == 0:
+        print("[patch_animate] pattern missing in %s" % path)
+        continue
+    write(path, src2)
+    patched += 1
+    print("[patch_animate] patched %s" % path)
 
 if patched == 0:
     print("[patch_animate] nothing to patch (already patched or library missing)")
