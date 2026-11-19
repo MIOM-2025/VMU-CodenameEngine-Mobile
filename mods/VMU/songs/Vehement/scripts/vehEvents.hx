@@ -1,7 +1,7 @@
 importScript("data/scripts/lyrics");
 
 import openfl.display.BlendMode;
-import openfl.filters.ShaderFilter;
+import openfl.geom.ColorTransform;
 import flixel.effects.FlxFlicker;
 import flixel.util.FlxColor;
 
@@ -236,11 +236,17 @@ function beatHit(curBeat:Int) {
             adjustColor.contrast = 0;
 
             if(Options.gameplayShaders){
-                // Characters are FlxAnimate atlases; assigning a shader directly to them makes
-                // the animate filter baker crash on Android (NULL texture). Apply the same
-                // adjustColor through the game camera so characters get it too.
-                camGame.setFilters([new ShaderFilter(adjustColor)]);
-                FlxTween.tween(adjustColor, {brightness: -30, hue: -15, contrast: 15}, 1, {ease: FlxEase.quadOut});
+                // This device's Animate runtime crashes when a filter is baked (NULL texture),
+                // and a camera filter makes FlxAnimate bake too. Darken without shaders/filters:
+                // stage sprites get a colour transform, characters get a dimming alpha.
+                for (a in stage.stageSprites) {
+                    if (a != null) a.colorTransform = new ColorTransform(0.75, 0.75, 0.75, 1, 0, 0, 0, 0);
+                }
+                for (c in [boyfriend, gf]) if (c != null) c.alpha = 0.75;
+                for (arr in [mickeyChar, donaldChar, goofyChar]) {
+                    if (arr == null) continue;
+                    for (c in arr) if (c != null) c.alpha = 0.75;
+                }
             }
         case 305, 309: FlxTween.tween(dad, {alpha: 0.5}, 0.5);
         case 307, 312: FlxTween.tween(dad, {alpha: 1}, 0.75);

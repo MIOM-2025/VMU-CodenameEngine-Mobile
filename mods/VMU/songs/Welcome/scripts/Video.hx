@@ -60,15 +60,11 @@ function create() {
 	// video2.y -= 100;
 	insert(3, video2);
 
-    var vRes = {w:640, h:360};
-
     for (vid in [video, video3, video2]){
-        // Cover the whole screen: use the larger ratio so there is never a blank
-        // edge on any side, then center the (possibly cropped) video.
-        var s:Float = Math.max(FlxG.width / vRes.w, FlxG.height / vRes.h);
-        vid.scale.set(s, s);
-        vid.updateHitbox();
-        vid.screenCenter();
+        // Fit as soon as the decoder reports the real frame size, then keep it
+        // fitted every frame (see update()) so a late format change can't leave gaps.
+        fitVideo(vid);
+        if (vid.bitmap != null) vid.bitmap.onFormatSetup.add(function() fitVideo(vid));
     }
 
 
@@ -103,7 +99,20 @@ function beatHit() {
 	// trace("test");
 }
 
+function fitVideo(vid) {
+	if (vid == null || vid.bitmap == null) return;
+	var vw:Float = vid.bitmap.width;
+	var vh:Float = vid.bitmap.height;
+	if (vw <= 0 || vh <= 0) return;
+	var s:Float = Math.max(FlxG.width / vw, FlxG.height / vh);
+	vid.scale.set(s, s);
+	vid.updateHitbox();
+	vid.screenCenter();
+}
+
 function update() {
+	// Real-time fullscreen: keep every video layer covering the screen.
+	for (v in [video, video2, video3]) fitVideo(v);
 	if (!Options.gameplayShaders) return;
 	var on:Bool = camVideos.alpha == 1;
 	for (v in [video, video2, video3]) {
