@@ -153,6 +153,9 @@ jobs:
             find .hxcpp_cache -type d -name "pch*" -prune -exec rm -rf {} +
           fi
 
+      - name: Patch flixel-animate filter baking
+        run: python3 .github/scripts/patch_animate.py
+
       - name: Building the game
         run: haxelib run lime build android -release -arm64 -DCOMPILE_EXPERIMENTAL
 
